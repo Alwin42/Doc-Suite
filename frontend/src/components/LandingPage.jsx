@@ -13,7 +13,7 @@ export default function LandingPage() {
     const CORRECT_PIN = "123456"; 
     
     if (pin === CORRECT_PIN) {
-      navigate('/editor');
+      navigate('/home');
     } else {
       // If blank or wrong, trigger the error state and clear the field
       setError(true);

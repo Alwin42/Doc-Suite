@@ -9,6 +9,7 @@ import TextAlign from '@tiptap/extension-text-align';
 export default function EditorWorkspace() {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize the TipTap Headless Editor
   const editor = useEditor({
@@ -44,16 +45,52 @@ export default function EditorWorkspace() {
       isActive ? 'bg-gray-200 text-black shadow-inner' : 'text-gray-500 hover:bg-gray-100 hover:text-black'
     }`;
 
+  // API handler function
+  const handleRecordingToggle = async () => {
+    if (!isRecording) {
+      // START RECORDING
+      setIsRecording(true);
+    } else {
+      // STOP RECORDING & SEND TO BACKEND
+      setIsRecording(false);
+      setIsProcessing(true);
+
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/process-dictation/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audio_data: "Base64 or blob reference", 
+            language: "en-IN" 
+          })
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const data = await response.json();
+        editor.commands.insertContent(data.formatted_text);
+
+      } catch (error) {
+        console.error("Error processing dictation:", error);
+        alert("Failed to connect to the AI Engine. (Make sure Django is running!)");
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
   return (
     <div className="h-screen w-full flex flex-col bg-[#F8F9FA] font-sans text-black overflow-hidden selection:bg-[#D1AA41]/30">
       
       {/* Sleek Top Navigation */}
       <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0 z-30 shadow-sm">
         <button 
-          onClick={() => navigate('/')} 
+          onClick={() => navigate('/home')} 
           className="text-xs font-bold tracking-widest uppercase text-gray-400 hover:text-black transition-colors flex items-center space-x-2"
         >
-          <span>← Back to Vault</span>
+          <span>← Back to Home</span>
         </button>
         
         <span className="font-black tracking-widest text-lg uppercase">
@@ -173,11 +210,14 @@ export default function EditorWorkspace() {
           {/* Interactive Dictation Control */}
           <div className="flex flex-col items-center justify-center pt-8 mt-4">
             <button 
-              onClick={() => setIsRecording(!isRecording)}
+              onClick={handleRecordingToggle}
+              disabled={isProcessing}
               className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl active:scale-95 group ${
                 isRecording 
                   ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30' 
-                  : 'bg-[#D1AA41] hover:bg-[#b89539] shadow-[#D1AA41]/30 hover:-translate-y-1'
+                  : isProcessing 
+                    ? 'bg-gray-400 cursor-not-allowed animate-pulse'
+                    : 'bg-[#D1AA41] hover:bg-[#b89539] shadow-[#D1AA41]/30 hover:-translate-y-1'
               }`}
             >
               {isRecording ? (
